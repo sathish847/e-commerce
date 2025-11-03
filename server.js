@@ -46,13 +46,6 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/express-b
 // Import routes
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
-const categoryRoutes = require('./routes/categories');
-const newsRoutes = require('./routes/news');
-const subNewsRoutes = require('./routes/subnews');
-const miniNewsRoutes = require('./routes/mini_news');
-const mainNewsRoutes = require('./routes/main_news');
-const trendingNewsRoutes = require('./routes/trending_news');
-const combinedNewsRoutes = require('./routes/combined_news');
 
 // Basic route
 app.get('/', (req, res) => {
@@ -66,13 +59,6 @@ app.get('/', (req, res) => {
 // API routes
 app.use('/auth', authRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/categories', categoryRoutes);
-app.use('/api/news', newsRoutes);
-app.use('/api/subnews', subNewsRoutes);
-app.use('/api/mini_news', miniNewsRoutes);
-app.use('/api/main_news', mainNewsRoutes);
-app.use('/api/trending_news', trendingNewsRoutes);
-app.use('/api/all_news', combinedNewsRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({
