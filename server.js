@@ -3,6 +3,10 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
+const rateLimit = require('express-rate-limit');
+const hpp = require('hpp');
+const DOMPurify = require('dompurify');
+const { JSDOM } = require('jsdom');
 const dotenv = require('dotenv');
 const https = require('https');
 const http = require('http');
@@ -33,6 +37,57 @@ const corsOptions = {
 
 // Security middleware
 app.use(helmet()); // Security headers
+
+// Rate limiting - limit requests per window
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api/', limiter);
+
+// Prevent parameter pollution
+app.use(hpp());
+
+// XSS Protection Middleware
+const window = new JSDOM('').window;
+const purify = DOMPurify(window);
+
+const xssSanitize = (req, res, next) => {
+  // Sanitize request body
+  if (req.body) {
+    for (const key in req.body) {
+      if (typeof req.body[key] === 'string') {
+        req.body[key] = purify.sanitize(req.body[key], { ALLOWED_TAGS: [] });
+      }
+    }
+  }
+
+  // Sanitize query parameters
+  if (req.query) {
+    for (const key in req.query) {
+      if (typeof req.query[key] === 'string') {
+        req.query[key] = purify.sanitize(req.query[key], { ALLOWED_TAGS: [] });
+      }
+    }
+  }
+
+  // Sanitize route parameters
+  if (req.params) {
+    for (const key in req.params) {
+      if (typeof req.params[key] === 'string') {
+        req.params[key] = purify.sanitize(req.params[key], { ALLOWED_TAGS: [] });
+      }
+    }
+  }
+
+  next();
+};
+
+app.use(xssSanitize); // XSS protection
+
 app.use(compression()); // Response compression
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' })); // Limit payload size
