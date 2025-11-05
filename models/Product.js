@@ -1,6 +1,11 @@
 const mongoose = require('mongoose');
+const Counter = require('./Counter');
 
 const productSchema = new mongoose.Schema({
+  id: {
+    type: Number,
+    unique: true
+  },
   sku: {
     type: String,
     required: true,
@@ -78,10 +83,23 @@ const productSchema = new mongoose.Schema({
   }
 });
 
-// Update the updatedAt field before saving
-productSchema.pre('save', function(next) {
-  this.updatedAt = Date.now();
-  next();
+// Auto-increment id and update the updatedAt field before saving
+productSchema.pre('save', async function(next) {
+  try {
+    // Only increment if this is a new document
+    if (this.isNew) {
+      const counter = await Counter.findByIdAndUpdate(
+        { _id: 'productId' },
+        { $inc: { sequence_value: 1 } },
+        { new: true, upsert: true }
+      );
+      this.id = counter.sequence_value;
+    }
+    this.updatedAt = Date.now();
+    next();
+  } catch (error) {
+    next(error);
+  }
 });
 
 module.exports = mongoose.model('Product', productSchema);

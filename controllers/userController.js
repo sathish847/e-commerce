@@ -1,9 +1,9 @@
 const User = require('../models/User');
 
-// Get all users
+// Get all users (only regular users, not admins)
 const getAllUsers = async (req, res) => {
   try {
-    const users = await User.find().select('-password');
+    const users = await User.find({ role: 'user' }).select('-password');
     res.json({
       success: true,
       count: users.length,

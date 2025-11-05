@@ -5,6 +5,7 @@ const {
   getProduct,
   getProductsByCategory,
   getProductsByTag,
+  getNewProducts,
   createProduct,
   updateProduct,
   deleteProduct,
@@ -16,6 +17,7 @@ const router = express.Router();
 
 // Public routes (no authentication required)
 router.get('/', getAllProducts);
+router.get('/new', getNewProducts);
 router.get('/category/:categoryName', getProductsByCategory);
 router.get('/tag/:tagName', getProductsByTag);
 router.get('/:id', getProduct);

@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const passport = require('passport');
 const User = require('../models/User');
 
 // Generate JWT token
@@ -326,6 +327,33 @@ const updatePassword = async (req, res) => {
   }
 };
 
+// Google OAuth login
+const googleAuth = passport.authenticate('google', {
+  scope: ['profile', 'email']
+});
+
+// Google OAuth callback
+const googleAuthCallback = (req, res) => {
+  // This function will be called after successful Google authentication
+  // The user will be available in req.user
+  const token = generateToken(req.user._id);
+
+  // Return user data without password
+  const userResponse = {
+    _id: req.user._id,
+    name: req.user.name,
+    email: req.user.email,
+    role: req.user.role,
+    createdAt: req.user.createdAt
+  };
+
+  // Redirect to frontend with token and user data as URL parameters
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const redirectUrl = `${frontendUrl}/login-register?token=${token}&success=true&user=${encodeURIComponent(JSON.stringify(userResponse))}`;
+
+  res.redirect(redirectUrl);
+};
+
 module.exports = {
   register,
   createAdmin,
@@ -333,5 +361,7 @@ module.exports = {
   getProfile,
   updatePassword,
   generatePasswordResetToken,
-  resetPasswordWithToken
+  resetPasswordWithToken,
+  googleAuth,
+  googleAuthCallback
 };

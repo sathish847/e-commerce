@@ -127,6 +127,28 @@ const getProductsByTag = async (req, res) => {
   }
 };
 
+// Get new products (public - only active products where new: true)
+const getNewProducts = async (req, res) => {
+  try {
+    const products = await Product.find({
+      new: true,
+      status: true
+    }).sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      count: products.length,
+      data: products
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server Error',
+      error: error.message
+    });
+  }
+};
+
 // Create product with form-data and file uploads
 const createProduct = (req, res) => {
   // Use multer upload middleware
@@ -357,6 +379,7 @@ module.exports = {
   getProduct,
   getProductsByCategory,
   getProductsByTag,
+  getNewProducts,
   createProduct,
   updateProduct,
   deleteProduct

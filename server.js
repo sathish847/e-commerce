@@ -16,6 +16,9 @@ const path = require('path');
 // Load environment variables
 dotenv.config();
 
+// Initialize Passport
+require('./config/passport');
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 const HTTPS_PORT = process.env.HTTPS_PORT || 3443;
@@ -38,15 +41,15 @@ const corsOptions = {
 // Security middleware
 app.use(helmet()); // Security headers
 
-// Rate limiting - limit requests per window
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.',
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-app.use('/api/', limiter);
+// Rate limiting - limit requests per window (commented out for development)
+// const limiter = rateLimit({
+//   windowMs: 15 * 60 * 1000, // 15 minutes
+//   max: 100, // limit each IP to 100 requests per windowMs
+//   message: 'Too many requests from this IP, please try again later.',
+//   standardHeaders: true,
+//   legacyHeaders: false,
+// });
+// app.use('/api/', limiter);
 
 // Prevent parameter pollution
 app.use(hpp());
@@ -97,10 +100,40 @@ const xssSanitize = (req, res, next) => {
 
 app.use(xssSanitize); // XSS protection
 
-// MongoDB connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/express-backend')
+// MongoDB connection with proper options
+const mongooseOptions = {
+  maxPoolSize: 10, // Maintain up to 10 socket connections
+  serverSelectionTimeoutMS: 5000, // Keep trying to send operations for 5 seconds
+  socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
+  maxIdleTimeMS: 30000, // Close connections after 30 seconds of inactivity
+  family: 4, // Use IPv4, skip trying IPv6
+  heartbeatFrequencyMS: 10000, // Send heartbeats every 10 seconds
+  minPoolSize: 2 // Minimum number of connections in pool
+};
+
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/express-backend', mongooseOptions)
 .then(() => console.log('MongoDB connected successfully'))
 .catch(err => console.error('MongoDB connection error:', err));
+
+// Handle connection events
+mongoose.connection.on('connected', () => {
+  console.log('Mongoose connected to MongoDB');
+});
+
+mongoose.connection.on('error', (err) => {
+  console.error('Mongoose connection error:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.log('Mongoose disconnected');
+});
+
+// Close the Mongoose connection when the app is terminated
+process.on('SIGINT', async () => {
+  await mongoose.connection.close();
+  console.log('MongoDB connection closed due to app termination');
+  process.exit(0);
+});
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -112,6 +145,10 @@ const publicSubCategoryRoutes = require('./routes/publicSubCategories');
 const miniCategoryRoutes = require('./routes/miniCategories');
 const publicMiniCategoryRoutes = require('./routes/publicMiniCategories');
 const productRoutes = require('./routes/products');
+const tabRoutes = require('./routes/tabs');
+const publicTabRoutes = require('./routes/publicTabs');
+const wishlistRoutes = require('./routes/wishlist');
+const cartRoutes = require('./routes/cart');
 
 // Basic route
 app.get('/', (req, res) => {
@@ -132,13 +169,40 @@ app.use('/api/public/subcategories', publicSubCategoryRoutes);
 app.use('/api/minicategories', miniCategoryRoutes);
 app.use('/api/public/minicategories', publicMiniCategoryRoutes);
 app.use('/api/products', productRoutes);
+app.use('/api/tabs', tabRoutes);
+app.use('/api/public/tabs', publicTabRoutes);
+app.use('/api/wishlist', wishlistRoutes);
+app.use('/api/cart', cartRoutes);
 
-app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'OK',
-    timestamp: new Date().toISOString(),
-    secure: req.secure
-  });
+app.get('/api/health', async (req, res) => {
+  try {
+    // Check MongoDB connection
+    const dbState = mongoose.connection.readyState;
+    const dbStatus = {
+      0: 'disconnected',
+      1: 'connected',
+      2: 'connecting',
+      3: 'disconnecting'
+    };
+
+    res.json({
+      status: dbState === 1 ? 'OK' : 'Database connection issue',
+      timestamp: new Date().toISOString(),
+      secure: req.secure,
+      database: {
+        status: dbStatus[dbState],
+        name: mongoose.connection.name,
+        host: mongoose.connection.host
+      },
+      uptime: process.uptime()
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'ERROR',
+      timestamp: new Date().toISOString(),
+      error: error.message
+    });
+  }
 });
 
 // Global error handler
