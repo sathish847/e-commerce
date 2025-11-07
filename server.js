@@ -5,7 +5,6 @@ const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const hpp = require('hpp');
-const DOMPurify = require('isomorphic-dompurify');
 const dotenv = require('dotenv');
 const https = require('https');
 const http = require('http');
@@ -62,39 +61,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use(express.json({ limit: '10mb' })); // Limit payload size
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// XSS Protection Middleware
-const xssSanitize = (req, res, next) => {
-  // Sanitize request body
-  if (req.body) {
-    for (const key in req.body) {
-      if (typeof req.body[key] === 'string') {
-        req.body[key] = DOMPurify.sanitize(req.body[key], { ALLOWED_TAGS: [] });
-      }
-    }
-  }
-
-  // Sanitize query parameters
-  if (req.query) {
-    for (const key in req.query) {
-      if (typeof req.query[key] === 'string') {
-        req.query[key] = DOMPurify.sanitize(req.query[key], { ALLOWED_TAGS: [] });
-      }
-    }
-  }
-
-  // Sanitize route parameters
-  if (req.params) {
-    for (const key in req.params) {
-      if (typeof req.params[key] === 'string') {
-        req.params[key] = DOMPurify.sanitize(req.params[key], { ALLOWED_TAGS: [] });
-      }
-    }
-  }
-
-  next();
-};
-
-app.use(xssSanitize); // XSS protection
+// XSS Protection Middleware removed to avoid jsdom dependency issues
 
 // MongoDB connection with proper options
 const mongooseOptions = {

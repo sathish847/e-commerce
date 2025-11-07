@@ -24,7 +24,6 @@
     "express-validator": "^7.3.0",
     "helmet": "^8.1.0",
     "hpp": "^0.2.3",
-    "isomorphic-dompurify": "^2.16.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.19.2",
     "multer": "^2.0.2",
