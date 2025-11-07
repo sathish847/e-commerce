@@ -241,30 +241,32 @@ app.use((req, res) => {
 // Start HTTP server
 const httpServer = http.createServer(app);
 httpServer.listen(PORT, () => {
-  console.log(`HTTP Server is running on port ${PORT}`);
+  console.log(`Server is running on port ${PORT}`);
 });
 
-// Start HTTPS server (if certificates exist)
-try {
-  const sslKeyPath = path.join(__dirname, 'ssl', 'key.pem');
-  const sslCertPath = path.join(__dirname, 'ssl', 'cert.pem');
+// Start HTTPS server only in development (if certificates exist)
+if (process.env.NODE_ENV !== 'production') {
+  try {
+    const sslKeyPath = path.join(__dirname, 'ssl', 'key.pem');
+    const sslCertPath = path.join(__dirname, 'ssl', 'cert.pem');
 
-  if (fs.existsSync(sslKeyPath) && fs.existsSync(sslCertPath)) {
-    const sslOptions = {
-      key: fs.readFileSync(sslKeyPath),
-      cert: fs.readFileSync(sslCertPath),
-    };
+    if (fs.existsSync(sslKeyPath) && fs.existsSync(sslCertPath)) {
+      const sslOptions = {
+        key: fs.readFileSync(sslKeyPath),
+        cert: fs.readFileSync(sslCertPath),
+      };
 
-    const httpsServer = https.createServer(sslOptions, app);
-    httpsServer.listen(HTTPS_PORT, () => {
-      console.log(`HTTPS Server is running on port ${HTTPS_PORT}`);
-    });
-  } else {
-    console.log('SSL certificates not found. HTTPS server not started.');
-    console.log('To enable HTTPS, place key.pem and cert.pem in the ssl/ directory');
+      const httpsServer = https.createServer(sslOptions, app);
+      httpsServer.listen(HTTPS_PORT, () => {
+        console.log(`HTTPS Server is running on port ${HTTPS_PORT}`);
+      });
+    } else {
+      console.log('SSL certificates not found. HTTPS server not started.');
+      console.log('To enable HTTPS, place key.pem and cert.pem in the ssl/ directory');
+    }
+  } catch (error) {
+    console.error('Error starting HTTPS server:', error.message);
   }
-} catch (error) {
-  console.error('Error starting HTTPS server:', error.message);
 }
 
 module.exports = app;
