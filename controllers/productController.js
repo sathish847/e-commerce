@@ -373,6 +373,39 @@ const deleteProduct = async (req, res) => {
   }
 };
 
+const searchProducts = async (req, res) => {
+  try {
+    const { name } = req.query;
+
+    if (!name) {
+      return res.status(400).json({
+        success: false,
+        message: 'Product name search term is required.'
+      });
+    }
+
+    // Create a case-insensitive regex for searching product names
+    const searchRegex = new RegExp(name, 'i');
+
+    const products = await Product.find({
+      name: { $regex: searchRegex },
+      status: true // Only return active products
+    }).sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      count: products.length,
+      data: products
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server Error',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getAllProducts,
   getAllProductsAdmin,
@@ -382,5 +415,6 @@ module.exports = {
   getNewProducts,
   createProduct,
   updateProduct,
-  deleteProduct
+  deleteProduct,
+  searchProducts
 };

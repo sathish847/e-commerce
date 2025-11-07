@@ -6,14 +6,60 @@ const getWishlist = async (req, res) => {
   try {
     const userEmail = req.user.email;
 
-    const wishlist = await Wishlist.findOne({ userEmail })
-      .populate({
-        path: 'items.productId',
-        select: 'id sku name price discount image shortDescription stock status'
-      })
-      .lean();
+    // Use aggregation pipeline for better performance - filter active products at database level
+    const wishlist = await Wishlist.aggregate([
+      { $match: { userEmail } },
+      {
+        $lookup: {
+          from: 'products',
+          localField: 'items.productId',
+          foreignField: '_id',
+          as: 'productDetails'
+        }
+      },
+      {
+        $project: {
+          items: {
+            $filter: {
+              input: {
+                $map: {
+                  input: '$items',
+                  as: 'item',
+                  in: {
+                    $mergeObjects: [
+                      '$$item',
+                      {
+                        productId: {
+                          $arrayElemAt: [
+                            {
+                              $filter: {
+                                input: '$productDetails',
+                                as: 'product',
+                                cond: { $eq: ['$$product._id', '$$item.productId'] }
+                              }
+                            },
+                            0
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              },
+              as: 'item',
+              cond: {
+                $and: [
+                  { $ne: ['$$item.productId', null] },
+                  { $eq: ['$$item.productId.status', true] }
+                ]
+              }
+            }
+          }
+        }
+      }
+    ]);
 
-    if (!wishlist) {
+    if (!wishlist || wishlist.length === 0 || !wishlist[0].items || wishlist[0].items.length === 0) {
       return res.json({
         success: true,
         count: 0,
@@ -21,13 +67,8 @@ const getWishlist = async (req, res) => {
       });
     }
 
-    // Filter out items where product is not found or inactive
-    const validItems = wishlist.items.filter(item =>
-      item.productId && item.productId.status === true
-    );
-
-    // Calculate discounted price for each item
-    const itemsWithDiscount = validItems.map(item => {
+    // Calculate discounted prices
+    const itemsWithDiscount = wishlist[0].items.map(item => {
       const product = item.productId;
       const discountedPrice = product.discount > 0
         ? product.price - (product.price * product.discount / 100)
@@ -70,70 +111,71 @@ const addToWishlist = async (req, res) => {
       });
     }
 
-    // Find product by the auto-incremented id field (not MongoDB _id)
-    const product = await Product.findOne({ id: parseInt(productId) });
+    const productIdNum = parseInt(productId);
+
+    // Find product and check if user already has it in wishlist in one query
+    const product = await Product.findOne({ id: productIdNum, status: true });
     if (!product) {
       return res.status(404).json({
         success: false,
-        message: 'Product not found'
+        message: 'Product not found or not available'
       });
     }
 
-    if (!product.status) {
-      return res.status(400).json({
-        success: false,
-        message: 'Product is not available'
-      });
-    }
+    // Use atomic update to add or update wishlist item
+    const result = await Wishlist.findOneAndUpdate(
+      { userEmail },
+      {
+        $setOnInsert: { userEmail },
+        $set: { updatedAt: new Date() }
+      },
+      {
+        upsert: true,
+        new: true,
+        setDefaultsOnInsert: true
+      }
+    );
 
-    // Find or create wishlist for user
-    let wishlist = await Wishlist.findOne({ userEmail });
-
-    if (!wishlist) {
-      wishlist = new Wishlist({ userEmail, items: [] });
-    }
-
-    // Check if product already exists in wishlist (compare MongoDB _id)
-    const existingItemIndex = wishlist.items.findIndex(
+    // Check if product already exists and update or add
+    const existingItemIndex = result.items.findIndex(
       item => item.productId.toString() === product._id.toString()
     );
 
     if (existingItemIndex > -1) {
-      // Update quantity if item already exists
-      wishlist.items[existingItemIndex].quantity = quantity;
-      wishlist.items[existingItemIndex].addedAt = new Date();
+      // Update existing item
+      result.items[existingItemIndex].quantity = quantity;
+      result.items[existingItemIndex].addedAt = new Date();
     } else {
-      // Add new item to wishlist using MongoDB _id
-      wishlist.items.push({
+      // Add new item
+      result.items.push({
         productId: product._id,
         quantity,
         addedAt: new Date()
       });
     }
 
-    await wishlist.save();
+    await result.save();
 
-    // Populate product details for response
-    await wishlist.populate({
-      path: 'items.productId',
-      select: 'id sku name price discount image shortDescription stock status'
-    });
-
-    // Get the added/updated item
-    const updatedItem = wishlist.items.find(
-      item => item.productId._id.toString() === product._id.toString()
-    );
-
-    const discountedPrice = updatedItem.productId.discount > 0
-      ? updatedItem.productId.price - (updatedItem.productId.price * updatedItem.productId.discount / 100)
-      : updatedItem.productId.price;
+    // Create response item with product details (avoid extra populate query)
+    const discountedPrice = product.discount > 0
+      ? product.price - (product.price * product.discount / 100)
+      : product.price;
 
     const responseItem = {
-      ...updatedItem.toObject(),
       productId: {
-        ...updatedItem.productId.toObject(),
+        id: product.id,
+        sku: product.sku,
+        name: product.name,
+        price: product.price,
+        discount: product.discount,
+        image: product.image,
+        shortDescription: product.shortDescription,
+        stock: product.stock,
+        status: product.status,
         discountedPrice: Math.round(discountedPrice * 100) / 100
-      }
+      },
+      quantity,
+      addedAt: new Date()
     };
 
     res.status(201).json({

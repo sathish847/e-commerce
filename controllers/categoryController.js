@@ -1,4 +1,5 @@
 const Category = require('../models/Category');
+const { clearCache } = require('../middleware/cache');
 
 // Get all categories (sorted by sortOrder)
 const getAllCategories = async (req, res) => {
@@ -72,6 +73,9 @@ const createCategory = async (req, res) => {
 
     await category.save();
 
+    // Clear category cache
+    clearCache('categories');
+
     res.status(201).json({
       success: true,
       message: 'Category created successfully',
@@ -126,6 +130,9 @@ const updateCategory = async (req, res) => {
       });
     }
 
+    // Clear category cache
+    clearCache('categories');
+
     res.json({
       success: true,
       message: 'Category updated successfully',
@@ -151,6 +158,9 @@ const deleteCategory = async (req, res) => {
         message: 'Category not found'
       });
     }
+
+    // Clear category cache
+    clearCache('categories');
 
     res.json({
       success: true,

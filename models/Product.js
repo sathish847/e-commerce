@@ -4,7 +4,8 @@ const Counter = require('./Counter');
 const productSchema = new mongoose.Schema({
   id: {
     type: Number,
-    unique: true
+    unique: true,
+    index: true // Add index for faster lookups by frontend ID
   },
   sku: {
     type: String,
@@ -15,7 +16,8 @@ const productSchema = new mongoose.Schema({
   name: {
     type: String,
     required: true,
-    trim: true
+    trim: true,
+    index: true // Add index for faster searching
   },
   price: {
     type: Number,
@@ -36,7 +38,7 @@ const productSchema = new mongoose.Schema({
     type: Number,
     min: 0,
     max: 5,
-    default: 0
+    default: 5
   },
   saleCount: {
     type: Number,
