@@ -5,8 +5,7 @@ const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const hpp = require('hpp');
-const DOMPurify = require('dompurify');
-const { JSDOM } = require('jsdom');
+const DOMPurify = require('isomorphic-dompurify');
 const dotenv = require('dotenv');
 const https = require('https');
 const http = require('http');
@@ -64,15 +63,12 @@ app.use(express.json({ limit: '10mb' })); // Limit payload size
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // XSS Protection Middleware
-const window = new JSDOM('').window;
-const purify = DOMPurify(window);
-
 const xssSanitize = (req, res, next) => {
   // Sanitize request body
   if (req.body) {
     for (const key in req.body) {
       if (typeof req.body[key] === 'string') {
-        req.body[key] = purify.sanitize(req.body[key], { ALLOWED_TAGS: [] });
+        req.body[key] = DOMPurify.sanitize(req.body[key], { ALLOWED_TAGS: [] });
       }
     }
   }
@@ -81,7 +77,7 @@ const xssSanitize = (req, res, next) => {
   if (req.query) {
     for (const key in req.query) {
       if (typeof req.query[key] === 'string') {
-        req.query[key] = purify.sanitize(req.query[key], { ALLOWED_TAGS: [] });
+        req.query[key] = DOMPurify.sanitize(req.query[key], { ALLOWED_TAGS: [] });
       }
     }
   }
@@ -90,7 +86,7 @@ const xssSanitize = (req, res, next) => {
   if (req.params) {
     for (const key in req.params) {
       if (typeof req.params[key] === 'string') {
-        req.params[key] = purify.sanitize(req.params[key], { ALLOWED_TAGS: [] });
+        req.params[key] = DOMPurify.sanitize(req.params[key], { ALLOWED_TAGS: [] });
       }
     }
   }
