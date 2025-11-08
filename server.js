@@ -135,22 +135,22 @@ app.get('/', (req, res) => {
 app.use('/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/categories', categoryRoutes);
-app.use('/api/public/categories', httpCacheMiddleware(600), publicCategoryRoutes); // 10 minutes cache
+app.use('/api/public/categories', httpCacheMiddleware(120), publicCategoryRoutes); // 2 minutes cache
 app.use('/api/subcategories', subCategoryRoutes);
-app.use('/api/public/subcategories', httpCacheMiddleware(600), publicSubCategoryRoutes);
+app.use('/api/public/subcategories', httpCacheMiddleware(120), publicSubCategoryRoutes);
 app.use('/api/minicategories', miniCategoryRoutes);
-app.use('/api/public/minicategories', httpCacheMiddleware(600), publicMiniCategoryRoutes);
+app.use('/api/public/minicategories', httpCacheMiddleware(120), publicMiniCategoryRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/tabs', tabRoutes);
-app.use('/api/public/tabs', httpCacheMiddleware(600), publicTabRoutes);
+app.use('/api/public/tabs', httpCacheMiddleware(120), publicTabRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/herosliders', heroSliderRoutes);
-app.use('/api/public/herosliders', httpCacheMiddleware(300), publicHeroSliderRoutes); // 5 minutes cache
+app.use('/api/public/herosliders', httpCacheMiddleware(120), publicHeroSliderRoutes); // 2 minutes cache
 app.use('/api/banners', bannerRoutes);
-app.use('/api/public/banners', httpCacheMiddleware(300), publicBannerRoutes);
-app.use('/api/public/products', httpCacheMiddleware(180), publicProductRoutes); // 3 minutes cache
+app.use('/api/public/banners', httpCacheMiddleware(120), publicBannerRoutes);
+app.use('/api/public/products', httpCacheMiddleware(120), publicProductRoutes); // 2 minutes cache
 
 app.get('/api/health', async (req, res) => {
   try {

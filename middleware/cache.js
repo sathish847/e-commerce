@@ -1,7 +1,7 @@
 const NodeCache = require('node-cache');
 
-// Initialize cache with 5 minute standard TTL
-const cache = new NodeCache({ stdTTL: 300, checkperiod: 60 });
+// Initialize cache with 2 minute standard TTL
+const cache = new NodeCache({ stdTTL: 120, checkperiod: 60 });
 
 // Cache middleware for API responses
 const cacheMiddleware = (duration) => {
@@ -41,7 +41,7 @@ const cacheMiddleware = (duration) => {
 };
 
 // HTTP Cache headers middleware for public routes
-const httpCacheMiddleware = (maxAge = 300) => { // 5 minutes default
+const httpCacheMiddleware = (maxAge = 120) => { // 2 minutes default
   return (req, res, next) => {
     // Set cache headers for GET requests
     if (req.method === 'GET') {
